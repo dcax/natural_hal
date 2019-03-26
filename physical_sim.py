@@ -57,10 +57,10 @@ def get_gravitational_forces(state):
         for agent in range(subject+1, number_particles):
             #agent does force on subject
             #First [0] index at loc is the mass
-            r = state[subject+1:subject+1+3] - state[agent+1:agent+1+3] #radial between particles
+            r = state[agent+1:agent+1+3] - state[subject+1:subject+1+3]   #radial between particles
             f = G*state[subject]*state[agent] * r /np.power(np.dot(r,r) + epsilon**2,3/2)
             forces[subject:subject + 3] += f
-            forces[agent:agent + 3] += - f
+            forces[agent:agent + 3]     += -f
 
     return forces
 
