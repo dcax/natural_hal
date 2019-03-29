@@ -27,15 +27,15 @@ mass_spread = .2
 
 #mean_omega   =
 #omega_spread = 
-time_max = 5.0E2 #Max time for uniform distribution
+time_max = 5.0E1 #Max time for uniform distribution
 #period_max = 1.0E3 #Similar for period (related to omega)
 #period_min = .01 #to Avoid singularities
-omega_max = 10. #would prefer larger but need focus on small
+omega_max = 1.5 #would prefer larger but need focus on small
 
-mean_x   = 5.0 #not really a mean, since it's bimodal
+mean_x   = 3.0 #not really a mean, since it's bimodal
 x_spread = 2.
 
-mean_v   = 5.0
+mean_v   = 3.0
 v_spread = 2.
 
 end_time = 1000.

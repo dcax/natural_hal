@@ -2,6 +2,7 @@
 from pprint import pprint
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import os
 #Seaborn?
 
 from physical_sim import *
@@ -50,14 +51,40 @@ def main():
     #test_batch_0()
     #kepler_test()
     #test_batch_1()
-    print("Choose 1=train, 2=plot in time ")
+    print("Choose 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train ")
     choice = int(input())
     if choice == 1:
         hal_main_maker() #truncate=15,epochs=64*1024,batch=10)
     elif choice == 2:
         print("Which file do you want? ")
         f = input()
+        f = os.path.join("./saved_models",f)
+        #f = input()
         test_hal_in_time(f)
+    elif choice == 3:
+        #over fits the data to develop somehwat workable model
+        hal_main_maker(truncate=20,epochs=36*1024,batch=15)
+    elif choice == 4:
+        #improve network
+        print("Which file do you want? ")
+        f = input()
+        f = os.path.join("./saved_models",f)
+        hal_improve_model(f)
+    elif choice == 5:
+        #train with parameters accepted
+        print("What truncation of data do you want? ")
+        truncate = input()
+        try:
+            truncate = int(truncate)
+        except Exception as err:
+            #not an int
+            truncate = None
+        print("What batch size do you want? ")
+        batch = int(input())
+        print("How many epochs do you want? ")
+        epochs = int(input())
+        print()
+        hal_main_maker(truncate=truncate,epochs=epochs,batch=batch)
 
 
 

@@ -15,7 +15,7 @@ from hooke_system import *
 
 #Neural network spec
 NUM_INPUTS = 4 #T, w, x, v
-NUM_HIDDEN = 32 #Inc? 
+NUM_HIDDEN = 100 #Inc? 
 HIDDEN_LAYER_SPECS = [NUM_HIDDEN,NUM_HIDDEN]
 NUM_OUPUTS = 2 #Position and velocity
 #Network is 4 layers deep
@@ -23,8 +23,8 @@ NUM_OUPUTS = 2 #Position and velocity
 EPOCHS     = 2**12
 BATCH      = 2**8 #Inc?
 DATA_FETCH_LENGTH = EPOCHS*BATCH #Unused
-LEARNING_RATE   = .001 #Maybe start this out large then trim it down.
-LEAKY_RELU_RATE = .0001 #Used for the leaky ReLU to prevent dead ReLUs
+LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
+LEAKY_RELU_RATE = .005 #Used for the leaky ReLU to prevent dead ReLUs
 
 
 #file prep method
@@ -49,7 +49,7 @@ def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
     return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 #lambda x: tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 
-act = tf.keras.activations.relu
+act = leaky_relu #tf.keras.activations.relu
 
 def model(hidden_layers):
     #Makes neural network model given hidden layer spec
@@ -129,7 +129,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
     #with open("sys_params") as f:
     #    f.write(int(i)+1)
 
-    saved_model_path = "./checkoint/{}".format(int(time.time()))
+    saved_model_path = "./saved_models/{}".format(int(time.time()))
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
@@ -152,6 +152,60 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
 
     print("PASSED MODEL FORMING")
 
+def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS):
+    #improves model
+    #m = model(HIDDEN_LAYER_SPECS)
+    #checkpoint = tf.train.Checkpoint(model=m)
+    m = tf.keras.models.load_model(f)
+
+    #The point of intrest is the loss to this experiment
+    m.summary()
+    start_time = time.time()
+    if truncate is not None:       
+        #truncation allows overfitting on restriction of data
+        x, y = get_hooke_data(truncate)
+    else:
+        x, y = get_hooke_data(batch*epochs)
+    time_data_made = time.time()
+    
+    check_hooke_data(x,y)
+
+    time_data_checked = time.time()
+
+
+    m.fit(x, y, epochs=epochs, batch_size=batch)
+    time_data_fitted = time.time()
+
+    #print(m.weights)
+    print()
+    #pprint(m.weights)
+
+    #print("File {}.".format(FILE))
+    #tf.keras.models.save_model(model=m, filepath=FILE)
+    
+    #Now we note the next model done
+    #with open("sys_params") as f:
+    #    f.write(int(i)+1)
+    timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
+
+    saved_model_path = "./checkoint/{}".format(timestr)
+    #Checkpoints are the eager way to save models
+    #checkpoint.save(saved_model_path)
+    #Better file saving
+    m.save(saved_model_path)
+    
+    #Now we cat the time info to shell
+    print()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+    print("Took {} to generate data.".format(time_str(time_data_made - start_time)))
+    print("Took {} to check data.".format(time_str(time_data_checked - time_data_made)))
+    print("Took {} to fit data.".format(time_str(time_data_fitted - time_data_checked)))
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+
+    print()
+
+    #Now we do predicitve test
+    print(m.predict(np.array([np.array([10.,1.,1.,0.])])))
 
 def plot_hal_model_in_time(m):
     #plots the test results from the hal model
