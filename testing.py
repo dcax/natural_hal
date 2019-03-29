@@ -53,7 +53,7 @@ def main():
     print("Choose 1=train, 2=plot in time ")
     choice = int(input())
     if choice == 1:
-        hal_main_maker(truncate=15,epochs=64*1024,batch=10)
+        hal_main_maker() #truncate=15,epochs=64*1024,batch=10)
     elif choice == 2:
         print("Which file do you want? ")
         f = input()

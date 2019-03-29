@@ -21,10 +21,10 @@ NUM_OUPUTS = 2 #Position and velocity
 #Network is 4 layers deep
 
 EPOCHS     = 2**12
-BATCH      = 2**6 #Inc?
-DATA_FETCH_LENGTH = EPOCHS*BATCH
-LEARNING_RATE   = .001 #Starts out large then is eaten away by adam
-LEAKY_RELU_RATE = .003 #Unused
+BATCH      = 2**8 #Inc?
+DATA_FETCH_LENGTH = EPOCHS*BATCH #Unused
+LEARNING_RATE   = .001 #Maybe start this out large then trim it down.
+LEAKY_RELU_RATE = .0001 #Used for the leaky ReLU to prevent dead ReLUs
 
 
 #file prep method
@@ -45,10 +45,11 @@ CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
 UPPDER_TIME = 1000
 dt = .5 #specs used when doing plot comparison
 
-#def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
-#    return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
+def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
+    return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 #lambda x: tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 
+act = tf.keras.activations.relu
 
 def model(hidden_layers):
     #Makes neural network model given hidden layer spec
@@ -57,9 +58,9 @@ def model(hidden_layers):
     #Layers given orthogonal weights
     layers = []
     layers.append(tf.keras.layers.Dense(hidden_layers[0],input_dim=NUM_INPUTS, 
-        activation=tf.keras.activations.relu))
+        activation=act))
     for layer in hidden_layers[1:]: #Consider dropout for versatility
-        layers.append(tf.keras.layers.Dense(layer, activation=tf.keras.activations.relu))
+        layers.append(tf.keras.layers.Dense(layer, activation=act))
     #Output linear for the purpose of outputing a real value
     layers.append(tf.keras.layers.Dense(NUM_OUPUTS, 
         activation=tf.keras.activations.linear))
@@ -70,7 +71,7 @@ def model(hidden_layers):
     #accuracy is a bad continuos metric since it is discreteish
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
         loss=tf.keras.losses.MSE, 
-        metrics=['accuracy','mae'])
+        metrics=['accuracy','mae', 'mape'])
     #m.optimizer.lr = LEARNING_RATE
 
     return m
