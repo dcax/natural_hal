@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from physical_sim import *
 from hooke_system import *
+from hal_model_0  import *
 
 
 #This is where the bulk of the testing code should go
@@ -48,7 +49,15 @@ def test_batch_1():
 def main():
     #test_batch_0()
     #kepler_test()
-    test_batch_1()
+    #test_batch_1()
+    print("Choose 1=train, 2=plot in time ")
+    choice = int(input())
+    if choice == 1:
+        hal_main_maker(truncate=15,epochs=64*1024,batch=10)
+    elif choice == 2:
+        print("Which file do you want? ")
+        f = input()
+        test_hal_in_time(f)
 
 
 
