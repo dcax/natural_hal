@@ -145,11 +145,11 @@ def mk_potential_point():
     x = mk_x()
     v = mk_v()
     assert t >= 0. and w > 0.
-    return np.array([t,w,x,v])
+    return np.array([t,w,x,v,t*w])
 
 def mk_potential_points(length):
     #returns particles in some params in (length,NUM_INPUTS)
-    points = np.zeros((length,4))
+    points = np.zeros((length,5))
     for i in range(length):
         points[i,:] = mk_potential_point()
     
@@ -166,7 +166,7 @@ def get_hooke_data(length=1):
     return x, y
 
 def energy(w,pos,vel): #Standard hamiltonian for harmonic oscillator with w = sqrt(k/m)
-    return 1/2*((vel**2)/w + (pos**2)*w)
+    return 1/2*((vel**2) + (pos**2)*(w**2))
 
 def check_hooke_data(x,y):
     #confirms that the energy is not truly lost in systems.
@@ -177,6 +177,5 @@ def check_hooke_data(x,y):
     for i in range(x.shape[0]):
         energies[i] = energy(x[i,1],y[i,0],y[i,1]) - energy(x[i,1],x[i,2],x[i,3])
     print("Energy profile: {}\n.".format(scipy.stats.describe(energies)))
-
 
 

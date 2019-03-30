@@ -14,25 +14,25 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' #Stops superlfuous err message
 from hooke_system import *
 
 #Neural network spec
-NUM_INPUTS = 4 #T, w, x, v
+NUM_INPUTS = 5 #T, w, x, v, T*w
 NUM_HIDDEN = 100 #Inc? 
 HIDDEN_LAYER_SPECS = [NUM_HIDDEN,NUM_HIDDEN]
 NUM_OUPUTS = 2 #Position and velocity
 #Network is 4 layers deep
 
-EPOCHS     = 2**11
-BATCH      = 2**7 #Inc?
+EPOCHS     = 2**10
+BATCH      = 2**6 #Inc?
 DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Unused
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
-PHYSICAL_IMPORTANCE = .01 #Param that describes the importance of the physical learning check
+PHYSICAL_IMPORTANCE = 60. #Param that describes the importance of the physical learning check
 
 
 #file prep method
 #ensures new file for each run
 
 
-
+DATA_OUTPUT_FILE = "data_noted.txt"
 
 CHECKPOINT_PATH = "training_1/checkpoint.ckpt"
 CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
@@ -41,7 +41,6 @@ CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
 #    save_weights_only=False,
 #    verbose=1) #Saves model during and after training
 #Eager does not work well with callbacks
-
 
 UPPDER_TIME = 1000
 dt = .5 #specs used when doing plot comparison
@@ -55,15 +54,31 @@ act = tf.keras.activations.relu
 #Physical loss is in the form of a regulariser
 def loss_fun(input_layer):
     #This add the phyiscal energy term and extracts the inputs to put energy
-    inputs = input_layer.inputs #[input_layer.get_input_at(index) for index in range(NUM_INPUTS)]
+    inputs = input_layer.input #[input_layer.get_input_at(index) for index in range(NUM_INPUTS)]
     def loss_interior(y_predicted,y_observed):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
         physical_term = PHYSICAL_IMPORTANCE*tf.reduce_mean(tf.square(
-                energy(inputs[1],y_predicted[0],y_predicted[1]) - energy(inputs[1],inputs[2],inputs[3])))
+                energy(inputs[:,1],y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2],inputs[:,3])))
         return physical_term + tf.keras.losses.mse(y_predicted,y_observed)
     
     return loss_interior
+
+#metrics to list:
+
+def energy_metric(input_layer):
+    #metric that outputs energy expended squared
+    inputs = input_layer.input
+    def energy_error(y_predicted,y_observed):
+        #Done in this pattern to give loss access to inputs
+        #physical term does not care about y_observed
+        physical_term = tf.reduce_mean(tf.square(
+                energy(inputs[:,1],y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2],inputs[:,3])))
+        return physical_term
+    
+    return energy_error
+
+metrics = ['accuracy','mae', 'mape', "mse"]
 
 def model(hidden_layers):
     #Makes neural network model given hidden layer spec
@@ -86,7 +101,7 @@ def model(hidden_layers):
     #accuracy is a bad continuos metric since it is discreteish
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
         loss=loss_fun(input_layer), 
-        metrics=['accuracy','mae', 'mape'])
+        metrics=metrics + [energy_metric(input_layer)])
     #m.optimizer.lr = LEARNING_RATE
 
     return m
@@ -163,7 +178,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
     print()
 
     #Now we do predicitve test
-    print(m.predict(np.array([np.array([10.,1.,1.,0.])])))
+    print(m.predict(np.array([np.array([10.,1.,1.,0.,10.])])))
 
     #m.save(saved_model_path, include_optimizer=False)
 
@@ -173,7 +188,10 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     #improves model
     #m = model(HIDDEN_LAYER_SPECS)
     #checkpoint = tf.train.Checkpoint(model=m)
-    m = tf.keras.models.load_model(f)
+    m = tf.keras.models.load_model(f, compile=False)
+    m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
+        loss=loss_fun(m.layers[0]), 
+        metrics=metrics + [energy_metric([m.layers[0]])]) #compile to get loss func
 
     #The point of intrest is the loss to this experiment
     m.summary()
@@ -222,7 +240,7 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     print()
 
     #Now we do predicitve test
-    print(m.predict(np.array([np.array([10.,1.,1.,0.])])))
+    print(m.predict(np.array([np.array([10.,1.,1.,0.,10.])])))
 
 def plot_hal_model_in_time(m):
     #plots the test results from the hal model
@@ -231,9 +249,14 @@ def plot_hal_model_in_time(m):
     t = np.linspace(0,dt,UPPDER_TIME) #discretised time increments
     w = mk_omega()
     x0 = mk_x() #geting parameters of system to try
-    y0 = mk_v()
+    v0 = mk_v()
     f_x = np.vectorize(lambda tau: x(tau,w,x0,v0))
     f_v = np.vectorize(lambda tau: v(tau,w,x0,v0))
+    
+    #For sanity
+    print()
+    print(m.predict(np.array([np.array([10.,1.,1.,0.,10.])])))
+
 
     xs = f_x(t)
     vs = f_v(t)
@@ -241,13 +264,14 @@ def plot_hal_model_in_time(m):
     plt.scatter(t,xs)
     plt.scatter(t,vs)
 
-    data_inputs = np.transpose(np.array([t,w,x0,y0]))
+    data_inputs = np.array([np.array([tau,w,x0,v0,tau*w]) for tau in t])
 
     #Now we get the projected values
-    projected_phase = m.predict()
+    print(data_inputs.shape)
+    projected_phase = m.predict(data_inputs)
 
-    plt.scatter(t,projected_phase[0,:])
-    plt.scatter(t,projected_phase[1,:])
+    plt.scatter(t,projected_phase[:,0])
+    plt.scatter(t,projected_phase[:,1])
 
     
     #print(history) #prints history to give full model parameters
@@ -258,9 +282,31 @@ def plot_hal_model_in_time(m):
     plt.ylabel("X and V")
     plt.show()
 
+def get_model(f):
+    m = tf.keras.models.load_model(f, compile=False)
+    m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
+        loss=loss_fun(m.layers[0]), 
+        metrics=metrics + [energy_metric(model.layers[0])]) #compile to get loss func
+    return m
+
 def test_hal_in_time(f):
-    m = tf.keras.models.load_model(f)
+    m = get_model(f)
 
     plot_hal_model_in_time(m)
 
+def do_model_test(m):
+    #does one model test
+    x, y = get_hooke_data(DATA_FETCH_LENGTH)
+    evaluation = evaluate(m,x,y)
+    with open(DATA_OUTPUT_FILE, 'a') as f:
+        f.write("{}, {}".format(PHYSICAL_IMPORTANCE,str(list(evaluate))[1:-1]))
+
+
+def evaluate(model,x,y):
+    #evaluates the model
+    #returns evaluation data as tuple
+    #record = {'physical_validity_factor': PHYSICAL_IMPORTANCE, 'loss': None, 'acc': None, 
+    #    'mae': None, 'energy_error': energy_metric(model.layers[0]),' mape': None, "mse": None}
+    evaluation = model.evaluate(x,y)
+    return evaluation
 
