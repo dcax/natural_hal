@@ -31,12 +31,13 @@ time_max = 5.0E1 #Max time for uniform distribution
 #period_max = 1.0E3 #Similar for period (related to omega)
 #period_min = .01 #to Avoid singularities
 omega_max = 1.5 #would prefer larger but need focus on small
+std_omega = .5 #omega to use when system is held constant across iterations
 
 mean_x   = 3.0 #not really a mean, since it's bimodal
 x_spread = 3. #just uses spread now
 
-mean_v   = 3.0
-v_spread = 2.
+mean_v   = 1.0
+v_spread = 1.
 
 end_time = 1000.
 
@@ -110,10 +111,11 @@ def v(t,w,x,v):
 
 def project(p):
     #projects a particle to the future
-    return np.array([x(p[0],p[1],p[2],p[3]),v(p[0],p[1],p[2],p[3])])
+    return np.array([x(p[0],std_omega,p[1],p[2]),v(p[0],std_omega,p[1],p[2])])
 
 mk_time = lambda: np.random.random()*time_max
-mk_omega = lambda: np.random.random()*omega_max #avoids 0
+#constant omega simplifies the problem and holds system constant across iterations
+mk_omega = lambda: std_omega #lambda: np.random.random()*omega_max #avoids 0
 def mk_x():
     #bimodal x distribution
     """if np.random.random() > .5:
@@ -137,36 +139,36 @@ def mk_v():
 
 
 
-def mk_potential_point():
+def mk_potential_point(v_kill=False):
     #returns particles in some params in (length,NUM_INPUTS)
     #points = np.zeros((length,4))
     t = mk_time()
-    w = mk_omega()
+    #w = mk_omega() uses standard omega now
     x = mk_x()
-    v = mk_v()
-    assert t >= 0. and w > 0.
-    return np.array([t,w,x,v,t*w])
+    v = mk_v() * (0.0 if v_kill else 1.)
+    assert t >= 0. #and w > 0.
+    return np.array([t,x,v])
 
-def mk_potential_points(length):
+def mk_potential_points(length, v_kill=False):
     #returns particles in some params in (length,NUM_INPUTS)
-    points = np.zeros((length,5))
+    points = np.zeros((length,3))
     for i in range(length):
-        points[i,:] = mk_potential_point()
+        points[i,:] = mk_potential_point(v_kill)
     
     return points
 
-def get_hooke_data(length=1):
+def get_hooke_data(length=1, v_kill=False):
     #returns fied hooke' physical modelling
 
-    x = mk_potential_points(length)
+    x = mk_potential_points(length, v_kill)
 
     #Now we use x to find y
     y = np.apply_along_axis(project,1,x)
 
     return x, y
 
-def energy(w,pos,vel): #Standard hamiltonian for harmonic oscillator with w = sqrt(k/m)
-    return 1/2*((vel**2) + (pos**2)*(w**2))
+def energy(pos,vel): #Standard hamiltonian for harmonic oscillator with w = sqrt(k/m)
+    return 1/2*((vel**2) + (pos**2)*(std_omega**2))
 
 def check_hooke_data(x,y):
     #confirms that the energy is not truly lost in systems.
@@ -175,7 +177,7 @@ def check_hooke_data(x,y):
     assert x.shape[0] == y.shape[0]
     energies = np.zeros(x.shape[0])
     for i in range(x.shape[0]):
-        energies[i] = energy(x[i,1],y[i,0],y[i,1]) - energy(x[i,1],x[i,2],x[i,3])
+        energies[i] = energy(y[i,0],y[i,1]) - energy(x[i,1],x[i,2])
     print("Energy profile: {}\n.".format(scipy.stats.describe(energies)))
 
 

@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' #Stops superlfuous err message
 from hooke_system import *
 
 #Neural network spec
-NUM_INPUTS = 5 #T, w, x, v, T*w
+NUM_INPUTS = 3 #T, x, v, T*w
 NUM_HIDDEN = 100 #Inc? 
 HIDDEN_LAYER_SPECS = [NUM_HIDDEN,NUM_HIDDEN]
 NUM_OUPUTS = 2 #Position and velocity
@@ -25,8 +25,8 @@ BATCH      = 2**6 #Inc?
 DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Unused
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
-PHYSICAL_IMPORTANCE = 1. #Param that describes the importance of the physical learning check
-
+PHYSICAL_IMPORTANCE = 0.001 #1. #Param that describes the importance of the physical learning check
+REGULARISATION_RATE = .00001
 
 #file prep method
 #ensures new file for each run
@@ -49,7 +49,8 @@ def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
     return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 #lambda x: tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 
-act = tf.keras.activations.relu
+act = tf.keras.activations.linear#tf.keras.activations.relu
+#Leaky relu accomplished as a layer
 
 #Physical loss is in the form of a regulariser
 def loss_fun(m):
@@ -61,7 +62,7 @@ def loss_fun(m):
         #physical term does not care about y_observed
         #abs (L1) would zero out the coefficients
         physical_term = PHYSICAL_IMPORTANCE*tf.reduce_mean(tf.square(
-                energy(inputs[:,1],y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2],inputs[:,3])))
+                energy(y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2])))
         return physical_term + tf.keras.losses.mse(y_predicted,y_observed)
     
     return loss_interior
@@ -75,7 +76,7 @@ def energy_metric(m):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
         physical_term = tf.reduce_mean(tf.square(
-                energy(inputs[:,1],y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2],inputs[:,3])))
+                energy(y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2])))
         return physical_term
     
     return energy_error
@@ -89,13 +90,16 @@ def model(hidden_layers):
     #Layers given orthogonal weights
     layers = []
     layers.append(tf.keras.layers.Dense(hidden_layers[0],input_dim=NUM_INPUTS, 
-        activation=act))
+        activation=act, kernel_regularizer=tf.keras.regularizers.l2(REGULARISATION_RATE)))
     #input_layer = layers[0]
     for layer in hidden_layers[1:]: #Consider dropout for versatility
-        layers.append(tf.keras.layers.Dense(layer, activation=act))
+        layers.append(tf.keras.layers.Dense(layer, activation=act,
+            kernel_regularizer=tf.keras.regularizers.l2(REGULARISATION_RATE)))
+        layers.append(tf.keras.layers.LeakyReLU(LEAKY_RELU_RATE))
+
     #Output linear for the purpose of outputing a real value
     layers.append(tf.keras.layers.Dense(NUM_OUPUTS, 
-        activation=tf.keras.activations.linear))
+        activation=tf.keras.activations.linear, ))#kernel_regularizer=tf.keras.regularizers.l2(REGULARISATION_RATE)))
 
 
     m = tf.keras.Sequential(layers)
@@ -127,7 +131,7 @@ def time_str(sec):
         return str(sec) + " sec"
 
 
-def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
+def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False):
     
     m = model(HIDDEN_LAYER_SPECS)
     #checkpoint = tf.train.Checkpoint(model=m)
@@ -137,9 +141,9 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
     start_time = time.time()
     if truncate is not None:       
         #truncation allows overfitting on restriction of data
-        x, y = get_hooke_data(truncate)
+        x, y = get_hooke_data(truncate, v_kill)
     else:
-        x, y = get_hooke_data(DATA_FETCH_LENGTH)
+        x, y = get_hooke_data(DATA_FETCH_LENGTH, v_kill)
     time_data_made = time.time()
     
     check_hooke_data(x,y)
@@ -180,7 +184,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
     print()
 
     #Now we do predicitve test
-    print(m.predict(np.array([np.array([10.,1.,1.,0.,10.])])))
+    print(m.predict(np.array([np.array([10.,1.,0.])])))
 
     #m.save(saved_model_path, include_optimizer=False)
 
@@ -200,9 +204,9 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     start_time = time.time()
     if truncate is not None:       
         #truncation allows overfitting on restriction of data
-        x, y = get_hooke_data(truncate)
+        x, y = get_hooke_data(truncate, v_kill)
     else:
-        x, y = get_hooke_data(DATA_FETCH_LENGTH)
+        x, y = get_hooke_data(DATA_FETCH_LENGTH, v_kill)
     time_data_made = time.time()
     
     check_hooke_data(x,y)
@@ -242,7 +246,7 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     print()
 
     #Now we do predicitve test
-    print(m.predict(np.array([np.array([10.,1.,1.,0.,10.])])))
+    print(m.predict(np.array([np.array([10.,1.,0.])])))
 
 def plot_hal_model_in_time(m):
     #plots the test results from the hal model
@@ -257,7 +261,7 @@ def plot_hal_model_in_time(m):
     
     #For sanity
     print()
-    print(m.predict(np.array([np.array([10.,1.,1.,0.,10.])])))
+    print(m.predict(np.array([np.array([10.,1.,0.])])))
 
 
     xs = f_x(t)
@@ -296,12 +300,13 @@ def test_hal_in_time(f):
 
     plot_hal_model_in_time(m)
 
-def do_model_test(m):
+def do_model_test(m,f):
     #does one model test
     x, y = get_hooke_data(DATA_FETCH_LENGTH)
     evaluation = evaluate(m,x,y)
     with open(DATA_OUTPUT_FILE, 'a') as f:
-        f.write("{}, {}".format(PHYSICAL_IMPORTANCE,str(list(evaluate))[1:-1]))
+        f.write("{}, {}, {}".format(f, PHYSICAL_IMPORTANCE,str(list(evaluate))[1:-1]))
+        print("{}, {}".format(PHYSICAL_IMPORTANCE,str(list(evaluate))[1:-1]))
 
 
 def evaluate(model,x,y):

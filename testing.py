@@ -51,7 +51,7 @@ def main():
     #test_batch_0()
     #kepler_test()
     #test_batch_1()
-    print("Choose 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train, 6=controlled improve")
+    print("Choose 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train, 6=controlled improve, 7=fit to sin, 8=test")
     choice = int(input())
     if choice == 1:
         hal_main_maker() #truncate=15,epochs=64*1024,batch=10)
@@ -103,7 +103,27 @@ def main():
         epochs = int(input())
         print()
         hal_improve_model(f, truncate=truncate,epochs=epochs,batch=batch)
-
+    elif choice == 7:
+        #train with parameters accepted and with 0 input velocity
+        print("What truncation of data do you want? ")
+        truncate = input()
+        try:
+            truncate = int(truncate)
+        except Exception as err:
+            #not an int
+            truncate = None
+        print("What batch size do you want? ")
+        batch = int(input())
+        print("How many epochs do you want? ")
+        epochs = int(input())
+        print()
+        hal_main_maker(truncate=truncate,epochs=epochs,batch=batch, v_kill=True)
+    elif choice == 8:
+        #Where the main testing takes place
+        files = os.listdir("./saved_models/")
+        for f in files:
+            m = get_model(f)
+            do_model_test(m,f)
 
 
 
