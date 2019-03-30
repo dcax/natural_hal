@@ -20,11 +20,12 @@ HIDDEN_LAYER_SPECS = [NUM_HIDDEN,NUM_HIDDEN]
 NUM_OUPUTS = 2 #Position and velocity
 #Network is 4 layers deep
 
-EPOCHS     = 2**12
-BATCH      = 2**6 #Inc?
+EPOCHS     = 2**11
+BATCH      = 2**7 #Inc?
 DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Unused
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
-LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs
+LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
+PHYSICAL_IMPORTANCE = .01 #Param that describes the importance of the physical learning check
 
 
 #file prep method
@@ -51,6 +52,19 @@ def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
 
 act = tf.keras.activations.relu
 
+#Physical loss is in the form of a regulariser
+def loss_fun(input_layer):
+    #This add the phyiscal energy term and extracts the inputs to put energy
+    inputs = input_layer.inputs #[input_layer.get_input_at(index) for index in range(NUM_INPUTS)]
+    def loss_interior(y_predicted,y_observed):
+        #Done in this pattern to give loss access to inputs
+        #physical term does not care about y_observed
+        physical_term = PHYSICAL_IMPORTANCE*tf.reduce_mean(tf.square(
+                energy(inputs[1],y_predicted[0],y_predicted[1]) - energy(inputs[1],inputs[2],inputs[3])))
+        return physical_term + tf.keras.losses.mse(y_predicted,y_observed)
+    
+    return loss_interior
+
 def model(hidden_layers):
     #Makes neural network model given hidden layer spec
 
@@ -59,6 +73,7 @@ def model(hidden_layers):
     layers = []
     layers.append(tf.keras.layers.Dense(hidden_layers[0],input_dim=NUM_INPUTS, 
         activation=act))
+    input_layer = layers[0]
     for layer in hidden_layers[1:]: #Consider dropout for versatility
         layers.append(tf.keras.layers.Dense(layer, activation=act))
     #Output linear for the purpose of outputing a real value
@@ -70,7 +85,7 @@ def model(hidden_layers):
 
     #accuracy is a bad continuos metric since it is discreteish
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
-        loss=tf.keras.losses.MSE, 
+        loss=loss_fun(input_layer), 
         metrics=['accuracy','mae', 'mape'])
     #m.optimizer.lr = LEARNING_RATE
 
@@ -154,7 +169,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
 
     print("PASSED MODEL FORMING")
 
-def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS):
+def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=True):
     #improves model
     #m = model(HIDDEN_LAYER_SPECS)
     #checkpoint = tf.train.Checkpoint(model=m)
@@ -190,7 +205,7 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS):
     #    f.write(int(i)+1)
     timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
 
-    saved_model_path = "./checkoint/{}".format(timestr)
+    saved_model_path = "./saved_models/{}".format(timestr)
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
