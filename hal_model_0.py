@@ -22,10 +22,10 @@ NUM_OUPUTS = 2 #Position and velocity
 
 EPOCHS     = 2**10
 BATCH      = 2**6 #Inc?
-DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Unused
+DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Used for testing
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
-PHYSICAL_IMPORTANCE = 0.001 #1. #Param that describes the importance of the physical learning check
+PHYSICAL_IMPORTANCE = 0.01 #1. #Param that describes the importance of the physical learning check
 REGULARISATION_RATE = .00001
 
 #file prep method
@@ -300,13 +300,13 @@ def test_hal_in_time(f):
 
     plot_hal_model_in_time(m)
 
-def do_model_test(m,f):
+def do_model_test(m,f_name):
     #does one model test
     x, y = get_hooke_data(DATA_FETCH_LENGTH)
     evaluation = evaluate(m,x,y)
     with open(DATA_OUTPUT_FILE, 'a') as f:
-        f.write("{}, {}, {}".format(f, PHYSICAL_IMPORTANCE,str(list(evaluate))[1:-1]))
-        print("{}, {}".format(PHYSICAL_IMPORTANCE,str(list(evaluate))[1:-1]))
+        f.write("{}, {}, {}\n".format(f_name, PHYSICAL_IMPORTANCE,str(list(evaluation))[1:-1]))
+        print("{}, {}".format(PHYSICAL_IMPORTANCE,str(list(evaluation))[1:-1]))
 
 
 def evaluate(model,x,y):

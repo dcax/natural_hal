@@ -122,8 +122,11 @@ def main():
         #Where the main testing takes place
         files = os.listdir("./saved_models/")
         for f in files:
+            f = os.path.join("./saved_models/", f)
+            print("FILE = {}".format(f))
             m = get_model(f)
             do_model_test(m,f)
+            print("\n")
 
 
 
