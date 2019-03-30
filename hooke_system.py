@@ -33,7 +33,7 @@ time_max = 5.0E1 #Max time for uniform distribution
 omega_max = 1.5 #would prefer larger but need focus on small
 
 mean_x   = 3.0 #not really a mean, since it's bimodal
-x_spread = 2.
+x_spread = 3. #just uses spread now
 
 mean_v   = 3.0
 v_spread = 2.
@@ -116,17 +116,24 @@ mk_time = lambda: np.random.random()*time_max
 mk_omega = lambda: np.random.random()*omega_max #avoids 0
 def mk_x():
     #bimodal x distribution
-    if np.random.random() > .5:
+    """if np.random.random() > .5:
         return np.random.normal(mean_x,x_spread)
     else:
         return np.random.normal(-mean_x,x_spread)
+    """
+    return np.random.random()*(2*x_spread) - x_spread
+
 
 def mk_v():
     #bimodal x distribution
+
+    """
     if np.random.random() > .5:
         return np.random.normal(mean_v,v_spread)
     else:
         return np.random.normal(-mean_v,v_spread)
+        """ #Old attempt
+    return np.random.random()*(2*v_spread) - v_spread
 
 
 

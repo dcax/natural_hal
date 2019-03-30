@@ -21,10 +21,10 @@ NUM_OUPUTS = 2 #Position and velocity
 #Network is 4 layers deep
 
 EPOCHS     = 2**12
-BATCH      = 2**8 #Inc?
-DATA_FETCH_LENGTH = EPOCHS*BATCH #Unused
+BATCH      = 2**6 #Inc?
+DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Unused
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
-LEAKY_RELU_RATE = .005 #Used for the leaky ReLU to prevent dead ReLUs
+LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs
 
 
 #file prep method
@@ -49,7 +49,7 @@ def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
     return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 #lambda x: tf.keras.activations.relu(x,LEAKY_RELU_RATE)
 
-act = leaky_relu #tf.keras.activations.relu
+act = tf.keras.activations.relu
 
 def model(hidden_layers):
     #Makes neural network model given hidden layer spec
@@ -107,7 +107,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
         #truncation allows overfitting on restriction of data
         x, y = get_hooke_data(truncate)
     else:
-        x, y = get_hooke_data(batch*epochs)
+        x, y = get_hooke_data(DATA_FETCH_LENGTH)
     time_data_made = time.time()
     
     check_hooke_data(x,y)
@@ -128,8 +128,10 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
     #Now we note the next model done
     #with open("sys_params") as f:
     #    f.write(int(i)+1)
+    timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
 
-    saved_model_path = "./saved_models/{}".format(int(time.time()))
+
+    saved_model_path = "./saved_models/{}".format(timestr)
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
@@ -165,7 +167,7 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS):
         #truncation allows overfitting on restriction of data
         x, y = get_hooke_data(truncate)
     else:
-        x, y = get_hooke_data(batch*epochs)
+        x, y = get_hooke_data(DATA_FETCH_LENGTH)
     time_data_made = time.time()
     
     check_hooke_data(x,y)
