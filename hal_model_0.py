@@ -25,7 +25,7 @@ BATCH      = 2**6 #Inc?
 DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Unused
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
-PHYSICAL_IMPORTANCE = 60. #Param that describes the importance of the physical learning check
+PHYSICAL_IMPORTANCE = 1. #Param that describes the importance of the physical learning check
 
 
 #file prep method
@@ -52,12 +52,14 @@ def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
 act = tf.keras.activations.relu
 
 #Physical loss is in the form of a regulariser
-def loss_fun(input_layer):
+def loss_fun(m):
     #This add the phyiscal energy term and extracts the inputs to put energy
-    inputs = input_layer.input #[input_layer.get_input_at(index) for index in range(NUM_INPUTS)]
-    def loss_interior(y_predicted,y_observed):
+    inputs = m.get_input_at(0)
+    #[input_layer.get_input_at(index) for index in range(NUM_INPUTS)]
+    def loss_interior(y_observed,y_predicted):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
+        #abs (L1) would zero out the coefficients
         physical_term = PHYSICAL_IMPORTANCE*tf.reduce_mean(tf.square(
                 energy(inputs[:,1],y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2],inputs[:,3])))
         return physical_term + tf.keras.losses.mse(y_predicted,y_observed)
@@ -66,10 +68,10 @@ def loss_fun(input_layer):
 
 #metrics to list:
 
-def energy_metric(input_layer):
+def energy_metric(m):
     #metric that outputs energy expended squared
-    inputs = input_layer.input
-    def energy_error(y_predicted,y_observed):
+    inputs = m.get_input_at(0)
+    def energy_error(y_observed,y_predicted):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
         physical_term = tf.reduce_mean(tf.square(
@@ -88,7 +90,7 @@ def model(hidden_layers):
     layers = []
     layers.append(tf.keras.layers.Dense(hidden_layers[0],input_dim=NUM_INPUTS, 
         activation=act))
-    input_layer = layers[0]
+    #input_layer = layers[0]
     for layer in hidden_layers[1:]: #Consider dropout for versatility
         layers.append(tf.keras.layers.Dense(layer, activation=act))
     #Output linear for the purpose of outputing a real value
@@ -100,8 +102,8 @@ def model(hidden_layers):
 
     #accuracy is a bad continuos metric since it is discreteish
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
-        loss=loss_fun(input_layer), 
-        metrics=metrics + [energy_metric(input_layer)])
+        loss=loss_fun(m), 
+        metrics=metrics + [energy_metric(m)])
     #m.optimizer.lr = LEARNING_RATE
 
     return m
@@ -161,7 +163,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS):
     timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
 
 
-    saved_model_path = "./saved_models/{}".format(timestr)
+    saved_model_path = "./saved_models/{}+{}".format(timestr,PHYSICAL_IMPORTANCE)
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
@@ -190,8 +192,8 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     #checkpoint = tf.train.Checkpoint(model=m)
     m = tf.keras.models.load_model(f, compile=False)
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
-        loss=loss_fun(m.layers[0]), 
-        metrics=metrics + [energy_metric([m.layers[0]])]) #compile to get loss func
+        loss=loss_fun(m), 
+        metrics=metrics + [energy_metric(m)]) #compile to get loss func
 
     #The point of intrest is the loss to this experiment
     m.summary()
@@ -223,7 +225,7 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     #    f.write(int(i)+1)
     timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
 
-    saved_model_path = "./saved_models/{}".format(timestr)
+    saved_model_path = "./saved_models/{}+{}".format(timestr,PHYSICAL_IMPORTANCE)
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
@@ -286,7 +288,7 @@ def get_model(f):
     m = tf.keras.models.load_model(f, compile=False)
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
         loss=loss_fun(m.layers[0]), 
-        metrics=metrics + [energy_metric(model.layers[0])]) #compile to get loss func
+        metrics=metrics + [energy_metric(m)]) #compile to get loss func
     return m
 
 def test_hal_in_time(f):
