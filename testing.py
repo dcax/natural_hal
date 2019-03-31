@@ -13,7 +13,7 @@ from hal_model_0  import *
 #This is where the bulk of the testing code should go
 num_trials = 20000
 
-TRIALS = 3 #Trials for shift of variable
+TRIALS = 5 #Trials for shift of variable
 
 
 
@@ -64,9 +64,11 @@ def main():
         print("PHYSICAL_IMPORTANCE = {}.".format(PHYSICAL_IMPORTANCE))
         for i in range(TRIALS):
             #Trial loop for the system
+            print("--------Trial {} ---------".format(i))
             m = get_model(f,physical_importance=PHYSICAL_IMPORTANCE)
-            hal_improve_model(f, truncate=100000,epochs=1024,batch=1024,physical_importance=PHYSICAL_IMPORTANCE)
-            do_model_test(m,f,trial=i)
+            new_file = hal_improve_model(f, truncate=100000,epochs=1024*2,batch=1024*8,physical_importance=PHYSICAL_IMPORTANCE)
+            do_model_test(m,new_file,trial=i,physical_importance=PHYSICAL_IMPORTANCE)
+            print("\n")
         print("\n")
     elif choice == 1:
         hal_main_maker() #truncate=15,epochs=64*1024,batch=10)

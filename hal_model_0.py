@@ -189,6 +189,8 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False, phys
     #m.save(saved_model_path, include_optimizer=False)
 
     print("PASSED MODEL FORMING")
+    return saved_model_path
+
 
 def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=True, v_kill=False,trial=0, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     #improves model
@@ -249,6 +251,8 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     #Now we do predicitve test
     print(m.predict(np.array([np.array([10.,1.,0.])])))
     print("x, v = {}.".format(project([10.,1.,0.])))
+
+    return saved_model_path
 
 def plot_hal_model_in_time(m):
     #plots the test results from the hal model
