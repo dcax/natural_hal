@@ -13,7 +13,7 @@ from hal_model_0  import *
 #This is where the bulk of the testing code should go
 num_trials = 20000
 
-
+TRIALS = 3 #Trials for shift of variable
 
 
 
@@ -51,9 +51,24 @@ def main():
     #test_batch_0()
     #kepler_test()
     #test_batch_1()
-    print("Choose 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train, 6=controlled improve, 7=fit to sin, 8=test")
+    print("Choose 0=experiment, 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train, 6=controlled improve, 7=fit to sin, 8=test")
     choice = int(input())
-    if choice == 1:
+    if choice == 0:
+        #Official experiment of rates
+        print("Which seed file do you want? ")
+        f = input()
+        f = os.path.join("./saved_models",f)
+        print("SEED = {}".format(f))
+        print("Physical consistency rate? ")
+        PHYSICAL_IMPORTANCE = float(input())
+        print("PHYSICAL_IMPORTANCE = {}.".format(PHYSICAL_IMPORTANCE))
+        for i in range(TRIALS):
+            #Trial loop for the system
+            m = get_model(f,physical_importance=PHYSICAL_IMPORTANCE)
+            hal_improve_model(f, truncate=100000,epochs=1024,batch=1024,physical_importance=PHYSICAL_IMPORTANCE)
+            do_model_test(m,f,trial=i)
+        print("\n")
+    elif choice == 1:
         hal_main_maker() #truncate=15,epochs=64*1024,batch=10)
     elif choice == 2:
         print("Which file do you want? ")

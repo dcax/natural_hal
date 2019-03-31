@@ -25,7 +25,7 @@ BATCH      = 2**6 #Inc?
 DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Used for testing
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
-PHYSICAL_IMPORTANCE = 0.#6.#1.5 #1. #Param that describes the importance of the physical learning check
+DEFAULT_PHYSICAL_IMPORTANCE = 0.#6.#1.5 #1. #Param that describes the importance of the physical learning check
 REGULARISATION_RATE = .00001
 
 #file prep method
@@ -53,15 +53,15 @@ act = tf.keras.activations.linear#tf.keras.activations.relu
 #Leaky relu accomplished as a layer
 
 #Physical loss is in the form of a regulariser
-def loss_fun(m):
+def loss_fun(model=None, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     #This add the phyiscal energy term and extracts the inputs to put energy
-    inputs = m.get_input_at(0)
+    inputs = model.get_input_at(0)
     #[input_layer.get_input_at(index) for index in range(NUM_INPUTS)]
     def loss_interior(y_observed,y_predicted):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
         #abs (L1) would zero out the coefficients
-        physical_term = PHYSICAL_IMPORTANCE*tf.reduce_mean(tf.square(
+        physical_term = physical_importance*tf.reduce_mean(tf.square(
                 energy(y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2])))
         return physical_term + tf.keras.losses.mse(y_predicted,y_observed)
     
@@ -83,7 +83,7 @@ def energy_metric(m):
 
 metrics = ['accuracy','mae', 'mape', "mse"]
 
-def model(hidden_layers):
+def model(hidden_layers, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     #Makes neural network model given hidden layer spec
 
     #Now we create the layers to accept the data
@@ -106,7 +106,7 @@ def model(hidden_layers):
 
     #accuracy is a bad continuos metric since it is discreteish
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
-        loss=loss_fun(m), 
+        loss=loss_fun(model=m, physical_importance=physical_importance), 
         metrics=metrics + [energy_metric(m)])
     #m.optimizer.lr = LEARNING_RATE
 
@@ -131,9 +131,9 @@ def time_str(sec):
         return str(sec) + " sec"
 
 
-def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False):
+def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     
-    m = model(HIDDEN_LAYER_SPECS)
+    m = model(HIDDEN_LAYER_SPECS,physical_importance=physical_importance)
     #checkpoint = tf.train.Checkpoint(model=m)
 
     #The point of intrest is the loss to this experiment
@@ -167,7 +167,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False):
     timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
 
 
-    saved_model_path = "./saved_models/{}+{}".format(timestr,PHYSICAL_IMPORTANCE)
+    saved_model_path = "./saved_models/{}+{}".format(timestr,physical_importance)
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
@@ -190,14 +190,15 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False):
 
     print("PASSED MODEL FORMING")
 
-def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=True, v_kill=False):
+def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=True, v_kill=False,trial=0, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     #improves model
     #m = model(HIDDEN_LAYER_SPECS)
     #checkpoint = tf.train.Checkpoint(model=m)
-    m = tf.keras.models.load_model(f, compile=False)
+    m = get_model(f,physical_importance=physical_importance)
+    """tf.keras.models.load_model(f, compile=False)
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
         loss=loss_fun(m), 
-        metrics=metrics + [energy_metric(m)]) #compile to get loss func
+        metrics=metrics + [energy_metric(m)]) #compile to get loss func"""
 
     #The point of intrest is the loss to this experiment
     m.summary()
@@ -229,7 +230,7 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
     #    f.write(int(i)+1)
     timestr = time.strftime("%-Y%m-%d-%H-%M-%S")
 
-    saved_model_path = "./saved_models/{}+{}".format(timestr,PHYSICAL_IMPORTANCE)
+    saved_model_path = "./saved_models/{}+{}:{}".format(timestr,physical_importance,trial)
     #Checkpoints are the eager way to save models
     #checkpoint.save(saved_model_path)
     #Better file saving
@@ -289,10 +290,10 @@ def plot_hal_model_in_time(m):
     plt.ylabel("X and V")
     plt.show()
 
-def get_model(f):
+def get_model(f,physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     m = tf.keras.models.load_model(f, compile=False)
     m.compile(optimizer=tf.keras.optimizers.Adam(LEARNING_RATE), 
-        loss=loss_fun(m.layers[0]), 
+        loss=loss_fun(physical_importance=physical_importance,model=m.layers[0]), 
         metrics=metrics + [energy_metric(m)]) #compile to get loss func
     return m
 
@@ -301,13 +302,13 @@ def test_hal_in_time(f):
 
     plot_hal_model_in_time(m)
 
-def do_model_test(m,f_name):
+def do_model_test(m,f_name,trial=0, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     #does one model test
     x, y = get_hooke_data(DATA_FETCH_LENGTH)
     evaluation = evaluate(m,x,y)
     with open(DATA_OUTPUT_FILE, 'a') as f:
-        f.write("{}, {}, {}\n".format(f_name, PHYSICAL_IMPORTANCE,str(list(evaluation))[1:-1]))
-        print("{}, {}".format(PHYSICAL_IMPORTANCE,str(list(evaluation))[1:-1]))
+        f.write("{}, {}, {}, {}\n".format(f_name, physical_importance, trial,str(list(evaluation))[1:-1]))
+        print("{}, {}".format(physical_importance,str(list(evaluation))[1:-1]))
 
 
 def evaluate(model,x,y):
