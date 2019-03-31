@@ -42,8 +42,8 @@ CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
 #    verbose=1) #Saves model during and after training
 #Eager does not work well with callbacks
 
-UPPDER_TIME = 1000
-dt = .5 #specs used when doing plot comparison
+UPPDER_TIME = 60.
+dt = .3 #specs used when doing plot comparison
 
 def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
     return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
@@ -247,12 +247,13 @@ def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=Tr
 
     #Now we do predicitve test
     print(m.predict(np.array([np.array([10.,1.,0.])])))
+    print("x, v = {}.".format(project([10.,1.,0.])))
 
 def plot_hal_model_in_time(m):
     #plots the test results from the hal model
     #plots a systems 1 dimensional history as a function of time
     #plots velocity and position of real and projected systems
-    t = np.linspace(0,dt,UPPDER_TIME) #discretised time increments
+    t = np.linspace(0,UPPDER_TIME,num=UPPDER_TIME//dt) #discretised time increments
     w = mk_omega()
     x0 = mk_x() #geting parameters of system to try
     v0 = mk_v()
@@ -270,7 +271,7 @@ def plot_hal_model_in_time(m):
     plt.scatter(t,xs)
     plt.scatter(t,vs)
 
-    data_inputs = np.array([np.array([tau,w,x0,v0,tau*w]) for tau in t])
+    data_inputs = np.array([np.array([tau,x0,v0]) for tau in t])
 
     #Now we get the projected values
     print(data_inputs.shape)
