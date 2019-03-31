@@ -22,7 +22,7 @@ NUM_OUPUTS = 2 #Position and velocity
 
 EPOCHS     = 2**10
 BATCH      = 2**6 #Inc?
-DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Used for testing
+DATA_FETCH_LENGTH = 5*100000 #EPOCHS*BATCH #Used for testing
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
 DEFAULT_PHYSICAL_IMPORTANCE = 0.#6.#1.5 #1. #Param that describes the importance of the physical learning check
