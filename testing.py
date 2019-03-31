@@ -66,8 +66,9 @@ def main():
             #Trial loop for the system
             print("--------Trial {} ---------".format(i))
             m = get_model(f,physical_importance=PHYSICAL_IMPORTANCE)
-            new_file = hal_improve_model(f, truncate=200000,epochs=2048,batch=20000,physical_importance=PHYSICAL_IMPORTANCE)
-            do_model_test(m,new_file,trial=i,physical_importance=PHYSICAL_IMPORTANCE)
+            new_file = hal_improve_model(f, trial=i, truncate=200000,epochs=2048,batch=20000,physical_importance=PHYSICAL_IMPORTANCE)
+            new_model = get_model(new_file,physical_importance=PHYSICAL_IMPORTANCE)
+            do_model_test(new_model,new_file,trial=i,physical_importance=PHYSICAL_IMPORTANCE)
             print("\n")
         print("\n")
     elif choice == 1:

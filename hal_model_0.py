@@ -61,7 +61,7 @@ def loss_fun(model=None, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
         #abs (L1) would zero out the coefficients
-        physical_term = physical_importance*tf.reduce_mean(tf.square(
+        physical_term = physical_importance*tf.reduce_mean(tf.abs(
                 energy(y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2])))
         return physical_term + tf.keras.losses.mse(y_predicted,y_observed)
     
