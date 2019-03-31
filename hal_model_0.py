@@ -32,7 +32,7 @@ REGULARISATION_RATE = .00001
 #ensures new file for each run
 
 
-DATA_OUTPUT_FILE = "data_noted.txt"
+DATA_OUTPUT_FILE = "data_noted.csv"
 
 CHECKPOINT_PATH = "training_1/checkpoint.ckpt"
 CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
@@ -75,7 +75,7 @@ def energy_metric(m):
     def energy_error(y_observed,y_predicted):
         #Done in this pattern to give loss access to inputs
         #physical term does not care about y_observed
-        physical_term = tf.reduce_mean(tf.square(
+        physical_term = tf.reduce_mean(tf.abs(
                 energy(y_predicted[:,0],y_predicted[:,1]) - energy(inputs[:,1],inputs[:,2])))
         return physical_term
     
