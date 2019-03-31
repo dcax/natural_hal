@@ -25,7 +25,7 @@ BATCH      = 2**6 #Inc?
 DATA_FETCH_LENGTH = 100000 #EPOCHS*BATCH #Used for testing
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
-PHYSICAL_IMPORTANCE = 0.01 #1. #Param that describes the importance of the physical learning check
+PHYSICAL_IMPORTANCE = 1.5 #1. #Param that describes the importance of the physical learning check
 REGULARISATION_RATE = .00001
 
 #file prep method
@@ -190,7 +190,7 @@ def hal_main_maker(truncate=None, batch=BATCH, epochs=EPOCHS, v_kill=False):
 
     print("PASSED MODEL FORMING")
 
-def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=True):
+def hal_improve_model(f, truncate=None, batch=BATCH, epochs=EPOCHS, save_data=True, v_kill=False):
     #improves model
     #m = model(HIDDEN_LAYER_SPECS)
     #checkpoint = tf.train.Checkpoint(model=m)
