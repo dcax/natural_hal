@@ -343,6 +343,14 @@ def plot_experiment_summary(f):
     print(records[["physical_importance","mse"]])
     print()
     processed_data = records[["physical_importance","mse"]]
+
+    #now we compute averages
+    lambdas = processed_data["physical_importance"].unique()
+    with open("average_proccessed_data.csv","w") as f_out: 
+        for rate in lambdas:
+            f_out.write("{}, {}\n".format(rate,records[records["mse"] == rate]["mse"].mean()))
+    
+
     processed_data.to_csv("processed_data.csv") #puts proccessed data into a file
     plt.ylabel("Mean Sqaure Error")
     plt.xlabel("Physical Importance")
