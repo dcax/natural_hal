@@ -42,7 +42,7 @@ CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
 #    verbose=1) #Saves model during and after training
 #Eager does not work well with callbacks
 
-UPPDER_TIME = 60.
+UPPDER_TIME = 48.
 dt = .01 #specs used when doing plot comparison
 
 def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
