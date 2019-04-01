@@ -22,7 +22,7 @@ NUM_OUPUTS = 2 #Position and velocity
 
 EPOCHS     = 2**10
 BATCH      = 2**6 #Inc?
-DATA_FETCH_LENGTH = 5*100000 #EPOCHS*BATCH #Used for testing
+DATA_FETCH_LENGTH = 10*100000 #EPOCHS*BATCH #Used for testing
 LEARNING_RATE   = .005 #Maybe start this out large then trim it down.
 LEAKY_RELU_RATE = .01 #Used for the leaky ReLU to prevent dead ReLUs.
 DEFAULT_PHYSICAL_IMPORTANCE = 0.#6.#1.5 #1. #Param that describes the importance of the physical learning check
@@ -43,7 +43,7 @@ CHECKPOINT_DIR  = os.path.dirname(CHECKPOINT_PATH)
 #Eager does not work well with callbacks
 
 UPPDER_TIME = 60.
-dt = .3 #specs used when doing plot comparison
+dt = .01 #specs used when doing plot comparison
 
 def leaky_relu(x): #Encapsulates the leaky ReLU to avoid dead ReLUs
     return tf.keras.activations.relu(x,LEAKY_RELU_RATE)
@@ -306,11 +306,12 @@ def test_hal_in_time(f):
 
     plot_hal_model_in_time(m)
 
-def do_model_test(m,f_name,trial=0, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
+def do_model_test(m,f_name,trial=0, epochs=None, batch=None, physical_importance=DEFAULT_PHYSICAL_IMPORTANCE):
     #does one model test
     x, y = get_hooke_data(DATA_FETCH_LENGTH)
     evaluation = evaluate(m,x,y)
-    with open(DATA_OUTPUT_FILE, 'a') as f:
+    f_out = "{}_{}_{}".format(epochs,batch,DATA_OUTPUT_FILE) if epochs is not None and batch is not None else DATA_OUTPUT_FILE
+    with open(f_out, 'a') as f:
         f.write("{}, {}, {}, {}\n".format(f_name, physical_importance, trial,str(list(evaluation))[1:-1]))
         print("{}, {}".format(physical_importance,str(list(evaluation))[1:-1]))
 
@@ -323,3 +324,32 @@ def evaluate(model,x,y):
     evaluation = model.evaluate(x,y)
     return evaluation
 
+def plot_experiment_summary(f):
+    #plots experiment summary
+    #fields = "file_name,physical_importance,trial,loss,{},energy_metric".format(str(metrics)[1:-1]).split(",")
+    fields = ["file_name","physical_importance","trial","loss"] + metrics + ["energy_metric"]
+    #assumes that file lacks first fields line
+    records = pd.read_csv(f,names=fields)
+    #print(records)
+    #print(list(records))
+    #records = records[records.physical_importance <= .2]
+    plt.scatter(records.physical_importance,records.energy_metric)
+    plt.ylabel("Mean Absolute Energy Deviation")
+    plt.xlabel("Physical Importance")
+    plt.show()
+
+    plt.scatter(records.physical_importance,records.mse)
+    plt.ylabel("Mean Sqaure Error")
+    plt.xlabel("Physical Importance")
+    plt.title("Physical Weight vs MSE")
+    m = tf.keras.Sequential([#tf.keras.layers.Dense(units=1,input_dim=1),
+        tf.keras.layers.Lambda(lambda x:tf.sqrt(x), input_shape=(1,)),
+        tf.keras.layers.Dense(units=1)])
+    m.compile(optimizer="sgd",loss='mse')
+    m.fit(np.array(records.physical_importance), np.array(records.mse), epochs=4096, batch_size=32, verbose=0)
+    print(m.weights)
+    x_ticks = np.linspace(0.0,max(records.physical_importance),num=1000)
+    y_ticks = m.predict(x_ticks)
+    plt.scatter(x_ticks,y_ticks)
+    plt.show()
+    #Model appears to be of form: mse = a*sqrt(physical_importance) + b

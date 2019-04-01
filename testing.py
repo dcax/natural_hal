@@ -13,7 +13,7 @@ from hal_model_0  import *
 #This is where the bulk of the testing code should go
 num_trials = 20000
 
-TRIALS = 5 #Trials for shift of variable
+TRIALS = 20 #Trials for shift of variable
 
 
 
@@ -51,7 +51,7 @@ def main():
     #test_batch_0()
     #kepler_test()
     #test_batch_1()
-    print("Choose 0=experiment, 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train, 6=controlled improve, 7=fit to sin, 8=test")
+    print("Choose 0=experiment, 1=train, 2=plot in time, 3=overfitt, 4=improve, 5=controlled train, 6=controlled improve, 7=fit to sin, 8=test, 9=plot test results")
     choice = int(input())
     if choice == 0:
         #Official experiment of rates
@@ -66,9 +66,11 @@ def main():
             #Trial loop for the system
             print("--------Trial {} ---------".format(i))
             m = get_model(f,physical_importance=PHYSICAL_IMPORTANCE)
-            new_file = hal_improve_model(f, trial=i, truncate=200000,epochs=512,batch=20000,physical_importance=PHYSICAL_IMPORTANCE)
+            epochs = 16
+            batch = 20000
+            new_file = hal_improve_model(f, trial=i, truncate=500000,epochs=epochs,batch=batch,physical_importance=PHYSICAL_IMPORTANCE)
             new_model = get_model(new_file,physical_importance=PHYSICAL_IMPORTANCE)
-            do_model_test(new_model,new_file,trial=i,physical_importance=PHYSICAL_IMPORTANCE)
+            do_model_test(new_model,new_file,trial=i, epochs=epochs, batch=batch, physical_importance=PHYSICAL_IMPORTANCE)
             print("\n")
         print("\n")
     elif choice == 1:
@@ -145,6 +147,11 @@ def main():
             m = get_model(f)
             do_model_test(m,f)
             print("\n")
+    elif choice == 9:
+        #plot test results
+        print("Which data file to process? ")
+        f = input()
+        plot_experiment_summary(f)
 
 
 
