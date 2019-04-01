@@ -339,6 +339,11 @@ def plot_experiment_summary(f):
     plt.show()
 
     plt.scatter(records.physical_importance,records.mse)
+    print()
+    print(records[["physical_importance","mse"]])
+    print()
+    processed_data = records[["physical_importance","mse"]]
+    processed_data.to_csv("processed_data.csv") #puts proccessed data into a file
     plt.ylabel("Mean Sqaure Error")
     plt.xlabel("Physical Importance")
     plt.title("Physical Weight vs MSE")
