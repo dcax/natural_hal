@@ -348,8 +348,19 @@ def plot_experiment_summary(f):
     m.compile(optimizer="sgd",loss='mse')
     m.fit(np.array(records.physical_importance), np.array(records.mse), epochs=4096, batch_size=32, verbose=0)
     print(m.weights)
-    x_ticks = np.linspace(0.0,max(records.physical_importance),num=1000)
+    threshold = .08 #To cut off outliers
+    m_regular = tf.keras.Sequential([#tf.keras.layers.Dense(units=1,input_dim=1),
+        tf.keras.layers.Lambda(lambda x:tf.sqrt(x), input_shape=(1,)),
+        tf.keras.layers.Dense(units=1)])
+    m_regular.compile(optimizer="sgd",loss='mse')
+    m_regular.fit(np.array(records.physical_importance[records.mse<=threshold]), 
+        np.array(records.mse[records.mse<=threshold]), epochs=4096, batch_size=32, verbose=0)
+    #print(m.weights)
+    print(m_regular.weights)
+    x_ticks = np.linspace(0.0,max(records.physical_importance),num=3000)
     y_ticks = m.predict(x_ticks)
+    y_ticks_regular = m_regular.predict(x_ticks)
     plt.scatter(x_ticks,y_ticks)
+    plt.scatter(x_ticks,y_ticks_regular)
     plt.show()
     #Model appears to be of form: mse = a*sqrt(physical_importance) + b
